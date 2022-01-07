@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>员工列表</title>
+        <link href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+        <script src="https://ajax.aspnetcdn.com/ajax/jquery/jquery-3.5.1.min.js"></script>
+        <script src="https://cdn.bootcss.com/layer/2.4/layer.min.js"></script>
+    </head>
+    <body onload="getEmployeesList(1,10)">
+        <div class="container">
+            <div class="row clearfix">
+                <div class="col-md-12 column">
+                    <div class="page-header">
+                        <h1>
+                            <small>员工列表 —— 显示所有员工</small>
+                        </h1>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-5 column">
+                    <label class="control-label" for="empName">员工姓名：</label>
+                    <input type="text" name="empName" id="empName" style="width: 80px"
+                           placeholder="员工姓名">
+                    <label class="control-label" for="depart">部门名称：</label>
+                    <select id="depart" name="deptId">
+
+                    </select>
+                    <label class="control-label" for="pageSize">每页：</label>
+                    <select id="pageSize" onchange="getPageByPageSize()">
+                        <option value="10" selected>10条/页</option>
+                        <option value="20">20条/页</option>
+                        <option value="30">30条/页</option>
+                        <option value="50">50条/页</option>
+                        <option value="100">100条/页</option>
+                    </select>
+                </div>
+                <div class="col-md-4 column">
+                    <input type="button" class="btn btn-success" onclick="getPageBySearch(1)" value="搜索">
+                    <input type="button" class="btn btn-info" onclick="getPage(1)" value="显示所有员工">
+                    <a class="btn btn-primary" href="/toAddEmployee">新增</a>
+                    <input type="button" class="btn btn-danger" onclick="batch_del()" value="批量删除">
+                </div>
+                <div id="pageText" class="col-md-3 column"
+                     style="padding: 6px 12px;color: white;border-radius: 4px;background-color: green;text-align: center">
+
+                </div>
+            </div>
+
+            <div class="row clearfix">
+                <div class="col-md-12 column">
+                    <table class="table table-hover table-striped" id="employee">
+                        <thead>
+                        <tr>
+                            <th scope='col' width="25"><input type="checkbox" value="" name="selectAll"></th>
+                            <th>员工编号</th>
+                            <th>姓名</th>
+                            <th>邮箱</th>
+                            <th>性别</th>
+                            <th>部门名称</th>
+                            <th>操作</th>
+                        </tr>
+                        </thead>
+                        <tbody id="content">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="row">
+            <div class="col-md-8 column">
+                <nav aria-label="Page navigation" style="text-align: center">
+                    <ul class="pagination center-pill" id="page">
+
+                    </ul>
+                </nav>
+            </div>
+        </div>
+        <a href=""></a>
+        <form method="post" id="fm">
+            <input type="hidden" name="_method" value="delete">
+        </form>
+        <script>
+            var totalPage;
+            var totalQueryPage = 1;
+
+            //批量选中的效果
+            $('input:checkbox[name="selectAll"]').click(function () {
+                if ($(this).is(':checked')) {
+                    $('input:checkbox').each(function () {
+                        $(this).prop("checked", true);
+                    });
+                } else {
+                    $('input:checkbox').each(function () {
+                        $(this).prop("checked", false);
+                    });
+                }
+            });
+
+            //获取ids,批量删除
+            function batch_del() {
+                var ids = '';
+                $('input:checkbox').each(function () {
+                    if (this.checked == true) {
+                        ids += this.value + ',';
+                    }
+                });
+                //批量删除操作
+                layer.confirm('批量删除后不可恢复，谨慎操作！', {icon: 7, title: '警告'}, function (index) {
+                    if (ids == '') {
+                        window.alert("请选择要删除的员工信息!");
+                    } else {
+                        $("#fm").attr("action", "/employeeBatch/" + ids);
+                        //修改表单对象的action属性值
+                        $("#fm").submit();
+                    }
+                });
+            };
+
+            //默认分页查询
+            var getEmployeesList = function (pageNum, pageSize) {
+                $.ajax({
+                    url: "/employee/" + pageNum + "/" + pageSize,
+                    type: "get",
+                    success: function (data) {
+                        getDepartmentList(0);
+                        let html = "";
+                        for (let i = 0; i < data.list.length; i++) {
+                            let temp = "";
+                            if (data.list[i].gender == "M") {
+                                temp = "男";
+                            } else {
+                                temp = "女";
+                            }
+                            html += "<tr>" +
+                                "<td><input type='checkbox' value='" + data.list[i].id + "'>" + "</td>" +
+                                "<td>" + data.list[i].empId + "</td>" +
+                                "<td>" + data.list[i].empName + "</td>" +
+                                "<td>" + data.list[i].email + "</td>" +
+                                "<td>" + temp + "</td>" +
+                                "<td>" + data.list[i].department.deptName + "</td>" +
+                                "<td>" + "<a class=\"btn btn-primary btn-sm\" href='/toUpdateEmployee/" + data.list[i].id + "'>" + "更改</a>" +
+                                " <a class=\"btn btn-danger btn-sm\"" + " onclick=\"deleteEmployee('/employee/" + data.list[i].id + "')\">删除</a>" + "</td>" +
+                                "</tr>"
+                        }
+                        totalPage = data.pages;
+                        //处理分页栏
+                        $("#page").append("<li><a onclick=getPage(1)>首页</a></li>");
+                        $("#page").append("<li><a onclick=getPage(" + (data.pageNum - 1) + ") aria-label=\"Previous\"><span aria-hidden=\"true\">&laquo;</span></a></li>");
+                        for (let i = 0; i < data.navigatepageNums.length; i++) {
+                            var temp = data.navigatepageNums[i];
+                            if (pageNum == temp) {
+                                $("#page").append("<li class='active'><a onclick=getPage(" + temp + ")>" + temp + "</a></li>");
+                            } else {
+                                $("#page").append("<li><a onclick=getPage(" + temp + ")>" + temp + "</a></li>");
+                            }
+                        }
+                        $("#page").append("<li><a onclick=getPage(" + (data.pageNum + 1) + ") aria-label=\"Next\"><span aria-hidden=\"true\">&raquo;</span></a></li>");
+                        $("#page").append("<li><a onclick=getPage(" + data.pages + ")>尾页</a></li>");
+                        var str = "当前页:" + data.pageNum + "页/共:" + data.pages + "页/总记录数:" + data.total + "条";
+                        $("#pageText").html(str);
+                        $("#content").html(html);
+                    }
+                });
+            };
+
+            //查询全部部门
+            var getDepartmentList = function (deptId) {
+                $.ajax({
+                    url: "/department",
+                    type: "get",
+                    dataType: 'json',
+                    success: function (data) {
+                        $("#depart").append("<option value=\"0\" selected>请选择部门</option>");
+                        for (let i = 0; i < data.length; i++) {
+                            if (deptId == data[i].deptId) {
+                                $("#depart").append("<option value='" + data[i].deptId + "' selected>" + data[i].deptName + "</option>");
+                            } else {
+                                $("#depart").append("<option value='" + data[i].deptId + "'>" + data[i].deptName + "</option>");
+                            }
+                        }
+                    }
+                });
+            };
+
+            //根据删除一个员工
+            var deleteEmployee = function (href) {
+                if (confirm("确认要删除吗?")) {
+                    //  http://localhost:8080/employee/1001
+                    $("#fm").attr("action", href);
+                    //修改表单对象的action属性值
+                    $("#fm").submit();
+                }
+            };
+
+            //上一页下一页实现
+            var getPage = function (pageNum) {
+                $("#page li").remove();
+                $("#depart option").remove();
+                if (pageNum <= 0) {
+                    pageNum = 1;
+                }
+                if (pageNum > totalPage) {
+                    pageNum = totalPage;
+                }
+                getEmployeesList(pageNum, $("#pageSize option:selected").val());
+            };
+
+            //上一页下一页实现，带条件的查询
+            var getPageByPageSize = function () {
+                var deptId = $("#depart option:selected").val();
+                $("#page li").remove();
+                $("#depart option").remove();
+                getDepartmentList(deptId);
+                var pageSize = $("#pageSize option:selected").val();
+                getEmployeesListPost(1, pageSize, deptId);
+            };
+
+
+            //条件分页查询
+            var getPageBySearch = function (pageNum) {
+                $("#page li").remove();
+                var pageSize = $("#pageSize option:selected").val();
+                var deptId = $("#depart option:selected").val();
+                $("#depart option").remove();
+                getDepartmentList(deptId);
+                if (pageNum <= 0) {
+                    pageNum = 1;
+                }
+                if (pageNum > totalQueryPage) {
+                    pageNum = totalQueryPage;
+                }
+                getEmployeesListPost(pageNum, pageSize, deptId);
+            };
+
+
+            //条件分页查询
+            var getEmployeesListPost = function (pageNum, pageSize, deptId) {
+
+                $.ajax({
+                    url: "/employee/" + pageNum + "/" + pageSize,
+                    type: "post",
+                    data: {"empName": $("#empName").val(), "deptId": deptId},
+                    success: function (data) {
+                        let html = "";
+                        for (let i = 0; i < data.list.length; i++) {
+                            let temp = "";
+                            if (data.list[i].gender == "M") {
+                                temp = "男";
+                            } else {
+                                temp = "女";
+                            }
+                            html += "<tr>" +
+                                "<td><input type='checkbox' value='" + data.list[i].id + "'>" + "</td>" +
+                                "<td>" + data.list[i].empId + "</td>" +
+                                "<td>" + data.list[i].empName + "</td>" +
+                                "<td>" + data.list[i].email + "</td>" +
+                                "<td>" + temp + "</td>" +
+                                "<td>" + data.list[i].department.deptName + "</td>" +
+                                "<td>" + "<a class=\"btn btn-primary btn-sm\" href='/toUpdateEmployee/" + data.list[i].id + "'>" + "更改</a>" +
+                                " <a class=\"btn btn-danger btn-sm\"" + " onclick=\"deleteEmployee('/employee/" + data.list[i].id + "')\">删除</a>" + "</td>" +
+                                "</tr>"
+                        }
+                        if (data.pages == 0) {
+                            totalQueryPage = 1;
+                        } else {
+                            totalQueryPage = data.pages;
+                        }
+                        //处理分页栏
+                        $("#page").append("<li><a onclick=getPageBySearch(1)>首页</a></li>");
+                        $("#page").append("<li><a onclick=getPageBySearch(" + (data.pageNum - 1) + ") aria-label=\"Previous\"><span aria-hidden=\"true\">&laquo;</span></a></li>");
+                        for (let i = 0; i < data.navigatepageNums.length; i++) {
+                            var temp = data.navigatepageNums[i];
+                            if (pageNum == temp) {
+                                $("#page").append("<li class='active'><a onclick=getPageBySearch(" + temp + ")>" + temp + "</a></li>");
+                            } else {
+                                $("#page").append("<li><a onclick=getPageBySearch(" + temp + ")>" + temp + "</a></li>");
+                            }
+                        }
+                        $("#page").append("<li><a onclick=getPageBySearch(" + (data.pageNum + 1) + ") aria-label=\"Next\"><span aria-hidden=\"true\">&raquo;</span></a></li>");
+                        $("#page").append("<li><a onclick=getPageBySearch(" + data.pages + ")>尾页</a></li>");
+                        var str = "当前页:" + data.pageNum + "页/共:" + data.pages + "页/总记录数:" + data.total + "条";
+                        $("#pageText").html(str);
+                        $("#content").html(html);
+                    }
+                });
+            };
+
+        </script>
+    </body>
+</html>

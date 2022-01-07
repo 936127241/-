@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zhou.mapper.EmployeeMapper">
+
+    <resultMap id="employees" type="employee">
+        <id property="id" column="id"/>
+        <result property="empId" column="empId"></result>
+        <result property="empName" column="empName"></result>
+        <result property="gender" column="gender"></result>
+        <result property="email" column="email"></result>
+        <result property="deptId" column="deptId"></result>
+        <association property="department" javaType="department">
+            <id property="id" column="id"></id>
+            <result property="deptId" column="deptId"></result>
+            <result property="deptName" column="deptName"></result>
+        </association>
+    </resultMap>
+
+    <insert id="insert">
+        insert into employee(empId,empName,gender,email,deptId)
+        values(#{empId},#{empName},#{gender},#{email},#{deptId})
+    </insert>
+    <update id="update">
+        update employee
+        <set>
+            <if test="empId != null and empId != ''">
+                empId = #{empId},
+            </if>
+            <if test="empName != null and empName != ''">
+                empName = #{empName},
+            </if>
+            <if test="gender != null and gender != ''">
+                gender = #{gender},
+            </if>
+            <if test="email != null and email != ''">
+                email = #{email},
+            </if>
+            <if test="deptId !=null and deptId != ''">
+                deptId = #{deptId}
+            </if>
+        </set>
+        <where>
+           <if test="id != null">
+               id = #{id}
+           </if>
+        </where>
+    </update>
+    <delete id="delete">
+        update employee
+        set flag = 1
+        <where>
+            <if test="id != null">
+                id = #{id}
+            </if>
+        </where>
+    </delete>
+
+    <select id="getAllEmployee" resultMap="employees">
+        select e.*,d.* from employee e,department d where e.deptId = d.deptId and e.flag = 0
+    </select>
+    <select id="getEmployee" resultType="employee">
+        select * from employee where flag = 0 and id = #{id}
+    </select>
+    <select id="getEmployeeByEmpId" resultType="int">
+        select count(id) from employee where flag = 0 and empId = #{empId}
+    </select>
+    <select id="getEmployeeBySearch" resultMap="employees">
+        select e.*,d.* from employee e,department d where e.deptId = d.deptId and e.flag = 0
+        <if test="empName != null and empName != ''">
+            and empName like concat(concat('%',#{empName}),'%')
+        </if>
+        <if test="deptId != null">
+            and e.deptId = #{deptId}
+        </if>
+    </select>
+
+</mapper>
